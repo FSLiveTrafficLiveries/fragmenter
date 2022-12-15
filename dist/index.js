@@ -29395,12 +29395,7 @@ function pack(buildManifest) {
         });
         const zipAndDelete = (sourcePath, zipDest) => __awaiter(this, void 0, void 0, function* () {
             const res = yield zip(sourcePath, zipDest);
-            if (!options.noBaseCopy) {
-                lib$1.rmdirSync(sourcePath, { recursive: true });
-            }
-            else {
-                lib$1.rmSync(path__default["default"].join(sourcePath, "module.json"));
-            }
+            lib$1.rmdirSync(sourcePath, { recursive: true });
             return res;
         });
         const toUnixPath = (path) => {

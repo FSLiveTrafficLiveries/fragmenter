@@ -175,11 +175,7 @@ export async function pack(
   > => {
     const res = await zip(sourcePath, zipDest);
 
-    if (!options.noBaseCopy) {
-      fs.rmdirSync(sourcePath, { recursive: true });
-    } else {
-      fs.rmSync(path.join(sourcePath, "module.json"));
-    }
+    fs.rmdirSync(sourcePath, { recursive: true });
 
     return res;
   };
