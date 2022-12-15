@@ -29395,7 +29395,8 @@ function pack(buildManifest) {
         });
         const zipAndDelete = (sourcePath, zipDest) => __awaiter(this, void 0, void 0, function* () {
             const res = yield zip(sourcePath, zipDest);
-            lib$1.rmdirSync(sourcePath, { recursive: true });
+            if (!options.noBaseCopy)
+                lib$1.rmdirSync(sourcePath, { recursive: true });
             return res;
         });
         const toUnixPath = (path) => {

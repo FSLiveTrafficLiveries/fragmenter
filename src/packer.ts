@@ -174,7 +174,7 @@ export async function pack(
   > => {
     const res = await zip(sourcePath, zipDest);
 
-    fs.rmdirSync(sourcePath, { recursive: true });
+    if (!options.noBaseCopy) fs.rmdirSync(sourcePath, { recursive: true });
 
     return res;
   };
