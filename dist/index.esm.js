@@ -29399,7 +29399,8 @@ function pack(buildManifest) {
             : yield lib$1.mkdtemp("fbw-build-");
         // Trap everything to ensure a proper cleanup of the temp directory
         try {
-            lib$1.copySync(buildManifest.baseDir, tempDir);
+            if (!options.noBaseCopy)
+                lib$1.copySync(buildManifest.baseDir, tempDir);
             const distributionManifest = {
                 modules: [],
                 base: {

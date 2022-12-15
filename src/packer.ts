@@ -236,7 +236,7 @@ export async function pack(
 
   // Trap everything to ensure a proper cleanup of the temp directory
   try {
-    fs.copySync(buildManifest.baseDir, tempDir);
+    if (!options.noBaseCopy) fs.copySync(buildManifest.baseDir, tempDir);
 
     const distributionManifest: DistributionManifest = {
       modules: [],
