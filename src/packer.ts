@@ -19,6 +19,7 @@ import {
   SINGLE_MODULE_MANIFEST,
   DEFAULT_SPLIT_FILE_SIZE,
 } from "./constants";
+import { rmSync } from "fs";
 
 /**
  * Build the individual zip files with the provided spec.
@@ -174,7 +175,11 @@ export async function pack(
   > => {
     const res = await zip(sourcePath, zipDest);
 
-    if (!options.noBaseCopy) fs.rmdirSync(sourcePath, { recursive: true });
+    if (!options.noBaseCopy) {
+      fs.rmdirSync(sourcePath, { recursive: true });
+    } else {
+      fs.rmSync(sourcePath + "/modules.json");
+    }
 
     return res;
   };
