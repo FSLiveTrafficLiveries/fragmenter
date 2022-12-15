@@ -29399,7 +29399,7 @@ function pack(buildManifest) {
                 lib$1.rmdirSync(sourcePath, { recursive: true });
             }
             else {
-                lib$1.rmSync(path__default["default"].join(sourcePath, "modules.json"));
+                lib$1.rmSync(path__default["default"].join(sourcePath, "module.json"));
             }
             return res;
         });
