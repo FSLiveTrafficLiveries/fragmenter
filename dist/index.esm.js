@@ -29357,7 +29357,7 @@ function pack(buildManifest) {
                 lib$1.rmdirSync(sourcePath, { recursive: true });
             }
             else {
-                lib$1.rmSync(sourcePath + "/modules.json");
+                lib$1.rmSync(path.join(sourcePath, "modules.json"));
             }
             return res;
         });

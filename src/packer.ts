@@ -178,7 +178,7 @@ export async function pack(
     if (!options.noBaseCopy) {
       fs.rmdirSync(sourcePath, { recursive: true });
     } else {
-      fs.rmSync(sourcePath + "/modules.json");
+      fs.rmSync(path.join(sourcePath, "modules.json"));
     }
 
     return res;
