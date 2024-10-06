@@ -118,6 +118,12 @@ export declare type PackOptions = Partial<BaseCommandOptions> & {
      * Defaults to `true`.
      */
     keepCompleteModulesAfterSplit?: boolean;
+    /**
+     * Whether to make a copy of the base before starting fragment.
+     * For Github build servers, not reuquired and uses signifcant build server space, set to false.
+     *
+     * Defaults to `true`.
+     */
     noBaseCopy?: boolean;
 };
 /**
