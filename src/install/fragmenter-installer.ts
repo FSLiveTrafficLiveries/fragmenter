@@ -478,18 +478,37 @@ export class FragmenterInstaller extends (EventEmitter as new () => TypedEventEm
         this.ctx.logTrace(`[FragmenterInstaller] Done cleaning up temporary module files for '${module.name}'`);
     }
 
-    private async moveOverBackedUpFiles(module: DistributionModule) {
-        const restoreDir = path.join(this.options.temporaryDirectory, 'restore', module.sourceDir);
-        const destModuleDir = path.join(this.destDir, module.sourceDir);
+    /**
+     * Normalize module.sourceDir to an array of strings
+     */
+    private getModuleSourceDirs(module: DistributionModule): string[] {
+        return Array.isArray(module.sourceDir) ? module.sourceDir : [module.sourceDir];
+    }
 
-        await this.moveOverModuleFiles(module, restoreDir, destModuleDir);
+    private async moveOverBackedUpFiles(module: DistributionModule) {
+        const sourceDirs = this.getModuleSourceDirs(module);
+
+        for (const sd of sourceDirs) {
+            const restoreDir = path.join(this.options.temporaryDirectory, 'restore', sd);
+            const destModuleDir = path.join(this.destDir, sd);
+
+            await this.moveOverModuleFiles(module, restoreDir, destModuleDir);
+        }
     }
 
     private async moveOverExtractedFiles(module: DistributionModule) {
         const extractedDir = path.join(this.options.temporaryDirectory, 'extract', module.name);
-        const destModuleDir = path.join(this.destDir, module.sourceDir);
 
-        await this.moveOverModuleFiles(module, extractedDir, destModuleDir);
+        const sourceDirs = this.getModuleSourceDirs(module);
+
+        for (const sd of sourceDirs) {
+            // When modules were packed from multiple source dirs, they were added under their basename
+            const subdirName = path.basename(sd);
+            const absoluteSourceDir = path.join(extractedDir, subdirName);
+            const destModuleDir = path.join(this.destDir, sd);
+
+            await this.moveOverModuleFiles(module, absoluteSourceDir, destModuleDir);
+        }
     }
 
     private async moveOverModuleFiles(module: DistributionModule, sourceDir: string, destModuleDir: string) {

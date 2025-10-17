@@ -59,6 +59,10 @@ export declare class FragmenterInstaller extends FragmenterInstaller_base {
     downloadAndInstallModule(module: DistributionModule, moduleIndex: number, fullModuleHash: string, move?: boolean): Promise<void>;
     private tryDownloadAndInstallModule;
     private cleanupTempModuleFiles;
+    /**
+     * Normalize module.sourceDir to an array of strings
+     */
+    private getModuleSourceDirs;
     private moveOverBackedUpFiles;
     private moveOverExtractedFiles;
     private moveOverModuleFiles;
