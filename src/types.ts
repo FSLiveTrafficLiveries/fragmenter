@@ -35,7 +35,7 @@ export interface InstallInfo {
 
 export interface Module {
   name: string;
-  sourceDir: string;
+  sourceDir: string | string[];
 }
 
 export interface DistributionModule extends Module {
