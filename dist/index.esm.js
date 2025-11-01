@@ -23053,33 +23053,18 @@ class FragmenterInstaller extends EventEmitter$3 {
             this.ctx.logTrace(`[FragmenterInstaller] Done cleaning up temporary module files for '${module.name}'`);
         });
     }
-    /**
-     * Normalize module.sourceDir to an array of strings
-     */
-    getModuleSourceDirs(module) {
-        return Array.isArray(module.sourceDir) ? module.sourceDir : [module.sourceDir];
-    }
     moveOverBackedUpFiles(module) {
         return __awaiter(this, void 0, void 0, function* () {
-            const sourceDirs = this.getModuleSourceDirs(module);
-            for (const sd of sourceDirs) {
-                const restoreDir = path.join(this.options.temporaryDirectory, 'restore', sd);
-                const destModuleDir = path.join(this.destDir, sd);
-                yield this.moveOverModuleFiles(module, restoreDir, destModuleDir);
-            }
+            const restoreDir = path.join(this.options.temporaryDirectory, 'restore', module.sourceDir);
+            const destModuleDir = path.join(this.destDir, module.sourceDir);
+            yield this.moveOverModuleFiles(module, restoreDir, destModuleDir);
         });
     }
     moveOverExtractedFiles(module) {
         return __awaiter(this, void 0, void 0, function* () {
             const extractedDir = path.join(this.options.temporaryDirectory, 'extract', module.name);
-            const sourceDirs = this.getModuleSourceDirs(module);
-            for (const sd of sourceDirs) {
-                // When modules were packed from multiple source dirs, they were added under their basename
-                const subdirName = path.basename(sd);
-                const absoluteSourceDir = path.join(extractedDir, subdirName);
-                const destModuleDir = path.join(this.destDir, sd);
-                yield this.moveOverModuleFiles(module, absoluteSourceDir, destModuleDir);
-            }
+            const destModuleDir = path.join(this.destDir, module.sourceDir);
+            yield this.moveOverModuleFiles(module, extractedDir, destModuleDir);
         });
     }
     moveOverModuleFiles(module, sourceDir, destModuleDir) {
@@ -29338,9 +29323,9 @@ function pack(buildManifest) {
                 source: sourcePath,
                 dest: zipDest,
             });
-            const allFiles = fsReaddirRecursive(sourcePath).map((i) => path.resolve(sourcePath, i));
+            const filesInModule = fsReaddirRecursive(sourcePath).map((i) => path.resolve(sourcePath, i));
             const crcInfo = {
-                hash: yield generateHashFromPaths(allFiles, sourcePath),
+                hash: yield generateHashFromPaths(filesInModule, sourcePath),
             };
             yield lib$1.writeJSON(path.join(sourcePath, SINGLE_MODULE_MANIFEST), crcInfo);
             console.log("[FRAGMENT] Creating ZIP", {
@@ -29348,11 +29333,7 @@ function pack(buildManifest) {
                 dest: zipDest,
             });
             const zip = new lib.Zip();
-            // Add all files while maintaining directory structure
-            for (const file of allFiles) {
-                const relativePath = path.relative(sourcePath, file);
-                yield zip.addFile(file, relativePath);
-            }
+            yield zip.addFolder(sourcePath);
             yield zip.archive(zipDest);
             const zipStat = yield lib$1.stat(zipDest);
             const doSplit = options.splitFileSize > 0 && zipStat.size > options.splitFileSize;
@@ -29367,7 +29348,7 @@ function pack(buildManifest) {
                 }
             }
             console.log("[FRAGMENT] Done writing zip", zipDest);
-            const sizeUncompressed = allFiles.reduce((accu, filePath) => accu + lib$1.statSync(filePath).size, 0);
+            const sizeUncompressed = filesInModule.reduce((accu, path) => accu + lib$1.statSync(path).size, 0);
             return [crcInfo.hash, splitFileCount, zipStat.size, sizeUncompressed];
         });
         const zipAndDelete = (sourcePath, zipDest) => __awaiter(this, void 0, void 0, function* () {
@@ -29389,18 +29370,11 @@ function pack(buildManifest) {
             if (["base", "full"].includes(moduleA.name.toLowerCase())) {
                 throw new Error(`'${moduleA.name}' is a reserved module name`);
             }
-            const sourceDirsA = Array.isArray(moduleA.sourceDir) ? moduleA.sourceDir : [moduleA.sourceDir];
             buildManifest.modules.forEach((moduleB) => {
                 if (moduleA !== moduleB) {
-                    const sourceDirsB = Array.isArray(moduleB.sourceDir) ? moduleB.sourceDir : [moduleB.sourceDir];
-                    // Check each combination of source directories for nesting
-                    for (const sourceA of sourceDirsA) {
-                        for (const sourceB of sourceDirsB) {
-                            const pathDiff = path.relative(sourceA, sourceB);
-                            if (!pathDiff.startsWith("..")) {
-                                throw new Error(`Module '${moduleA.name}' directory '${sourceA}' contains module '${moduleB.name}' directory '${sourceB}'. Modules within modules are not supported yet!`);
-                            }
-                        }
+                    const pathDiff = path.relative(moduleA.sourceDir, moduleB.sourceDir);
+                    if (!pathDiff.startsWith("..")) {
+                        throw new Error(`Module '${moduleA.name}' contains '${moduleB.name}'. Modules within modules are not supported yet!`);
                     }
                 }
             });
@@ -29452,60 +29426,13 @@ function pack(buildManifest) {
             // Zip Modules
             console.log("[FRAGMENT] Creating module ZIPs");
             for (const module of buildManifest.modules) {
-                const sourceDirs = Array.isArray(module.sourceDir) ? module.sourceDir : [module.sourceDir];
+                const sourcePath = path.join(tempDir, module.sourceDir);
                 const zipDest = path.join(buildManifest.outDir, `${module.name}.zip`);
-                // Create a new zip file
-                // First calculate CRC for the module
-                console.log("[FRAGMENT] Calculating module CRC", {
-                    module: module.name,
-                    sourceDirs: sourceDirs,
-                    dest: zipDest,
-                });
-                const zip = new lib.Zip();
-                let sizeUncompressed = 0;
-                // Generate hash for all files in all source directories
-                const allFiles = sourceDirs.flatMap(dir => fsReaddirRecursive(path.join(tempDir, dir)).map(f => path.resolve(tempDir, dir, f)));
-                const moduleHash = yield generateHashFromPaths(allFiles, tempDir);
-                console.log("[FRAGMENT] Creating module ZIP", {
-                    module: module.name,
-                    sourceDirs: sourceDirs,
-                    dest: zipDest,
-                });
-                // Add each source directory to the zip, preserving the directory structure
-                for (const dir of sourceDirs) {
-                    const sourcePath = path.join(tempDir, dir);
-                    const dirName = path.basename(dir);
-                    const filesInDir = fsReaddirRecursive(sourcePath).map((i) => path.resolve(sourcePath, i));
-                    sizeUncompressed += filesInDir.reduce((accu, filePath) => accu + lib$1.statSync(filePath).size, 0);
-                    // Add the directory and its contents to maintain structure
-                    yield zip.addFile(sourcePath, dirName);
-                    for (const file of filesInDir) {
-                        const relativePath = path.relative(sourcePath, file);
-                        yield zip.addFile(file, path.join(dirName, relativePath));
-                    }
-                }
-                // Archive the zip
-                yield zip.archive(zipDest);
-                console.log("[FRAGMENT] Done writing module ZIP", zipDest);
-                const zipStat = yield lib$1.stat(zipDest);
-                const doSplit = options.splitFileSize > 0 && zipStat.size > options.splitFileSize;
-                let splitFileCount = 0;
-                if (doSplit) {
-                    console.log(`[FRAGMENT] Splitting file ${path.parse(zipDest).base} because it is larger than 1GB`);
-                    const files = yield splitFile.splitFileBySize(zipDest, options.splitFileSize);
-                    console.log(`[FRAGMENT] Split file ${path.parse(zipDest).base} into ${files.length} parts`);
-                    splitFileCount = files.length;
-                    if (!options.keepCompleteModulesAfterSplit) {
-                        lib$1.rmSync(zipDest);
-                    }
-                }
-                // Clean up source directories
-                for (const dir of sourceDirs) {
-                    const sourcePath = path.join(tempDir, dir);
-                    lib$1.rmdirSync(sourcePath, { recursive: true });
-                }
-                // Store in manifest
-                distributionManifest.modules.push(Object.assign(Object.assign({}, module), { hash: moduleHash, splitFileCount, completeFileSize: zipStat.size, completeFileSizeUncompressed: sizeUncompressed }));
+                const [hash, splitFileCount, completeFileSize, completeFileSizeUncompressed,] = yield zipAndDelete(sourcePath, zipDest);
+                distributionManifest.modules.push(Object.assign(Object.assign({}, module), { hash,
+                    splitFileCount,
+                    completeFileSize,
+                    completeFileSizeUncompressed }));
             }
             // Zip the rest
             console.log("[FRAGMENT] Creating base ZIP");

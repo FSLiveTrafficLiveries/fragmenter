@@ -29,7 +29,7 @@ export interface InstallInfo {
 }
 export interface Module {
     name: string;
-    sourceDir: string | string[];
+    sourceDir: string;
 }
 export interface DistributionModule extends Module {
     hash: string;
